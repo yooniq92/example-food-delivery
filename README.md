@@ -652,7 +652,7 @@ spring:
 ![image](https://user-images.githubusercontent.com/33418976/98322177-2cf68200-202a-11eb-8462-9f7cef61c8e5.png)
 
 
-## 동기식 호출 / 서킷 브레이킹 / 장애격리
+## 동기식 호출 / 서킷 브레이킹 /
 
 * 서킷 브레이킹 프레임워크의 선택: Istio Destination rule MSA 의 각 서비스들의 에러가 전파되는 것을 막기 위해서 특정 서비스에서 에러가 발생할 경우 해당 서비스로의 연결을 차단하도록 구성하였습니다.
 
