@@ -622,7 +622,7 @@ application.yml의 간단한 설정을 통해 설정이 가능하다.
 ```
 ```
 # (rental)application.yml
-
+```
 ---
 spring:
   profiles: nosql
