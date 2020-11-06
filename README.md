@@ -495,7 +495,7 @@ Concurrency:		       96.02
 
 
 ## 헥사고날 아키텍처 변화 
-![image](https://user-images.githubusercontent.com/22365716/98314009-7f2ea780-2018-11eb-8963-6eb04c8b09cc.png)
+![image](https://user-images.githubusercontent.com/33418976/98323950-5e714c80-202e-11eb-91f0-6777bc67dfb3.png)
 
 # 구현:
 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트와 리액트으로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 808n 이다)
