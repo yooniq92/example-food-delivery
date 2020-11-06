@@ -588,3 +588,32 @@ http http://localhost:8088/rental/1
 ![image](https://user-images.githubusercontent.com/33418976/98322148-194b1b80-202a-11eb-83c4-37d043a0bfbd.png)
 
 ![image](https://user-images.githubusercontent.com/33418976/98322177-2cf68200-202a-11eb-8462-9f7cef61c8e5.png)
+
+
+```
+NAME                           READY   STATUS    RESTARTS   AGE
+pod/display-8b8cd49d4-gkwrp    2/2     Running   0          38m
+pod/gateway-77f65647b-hqv66    2/2     Running   0          41m
+pod/payment-695554d474-dw64d   2/2     Running   0          22m
+pod/receipt-c84c4dcd5-sg9v7    2/2     Running   0          22m
+pod/rental-9952354d474-darg    2/2     Running   0          18m
+pod/repair-75944fd685-bcpds    2/2     Running   0          22m
+pod/siege-5c7c46b788-dvw8p     2/2     Running   0          42h
+
+NAME              TYPE           CLUSTER-IP     EXTERNAL-IP     PORT(S)          AGE
+service/display   ClusterIP      10.0.222.174   <none>          8080/TCP         41m
+service/gateway   LoadBalancer   10.0.166.230   20.196.136.26   8080:31811/TCP   21m
+service/payment   ClusterIP      10.0.120.133   <none>          8080/TCP         41m
+service/receipt   ClusterIP      10.0.238.172   <none>          8080/TCP         42m
+service/rental    ClusterIP      10.0.213.192   <none>          8080/TCP         20m
+service/repair    ClusterIP      10.0.171.15    <none>          8080/TCP         26m
+
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/display   1/1     1            1           42m
+deployment.apps/gateway   1/1     1            1           21m
+deployment.apps/payment   1/1     1            1           21m
+deployment.apps/receipt   1/1     1            1           42m
+deployment.apps/repair    1/1     1            1           26m
+deployment.apps/rental    1/1     1            1           26m
+deployment.apps/siege     1/1     1            1           20m
+```
