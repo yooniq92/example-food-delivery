@@ -579,6 +579,41 @@ http http://localhost:8088/repairs/1
 http http://localhost:8088/payments/1
 http http://localhost:8088/rentals/1
 ```
+
+## 폴리글랏 퍼시스턴스
+마이크로서비스의 폴리그랏 퍼시스턴스의 예로 데이터의 빈번한 입출력을 사용하는 부분은 Display(View)의 저장소는 Mongo DB(NO SQL)를 사용하고 그 외의 업무 도메인인 접수(Receipt), 수리(Repair), 결재(Payment), 렌트(Rental)는 Maria DB(RDB)를 사용하였다.
+application.yml의 간단한 설정을 통해 설정이 가능하다.
+```
+application.xml (repair service)
+spring:
+  profiles: default
+  jpa:
+    database-platform: org.hibernate.dialect.MariaDB53Dialect
+    hibernate:
+      ddl-auto: create #create update none
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+  datasource:
+    url: jdbc:mariadb://${rental.db.url}:3306/rental?useSSL=true
+    username: ${rental.db.name}
+    password: ${rental.db.password}
+    driverClassName: org.mariadb.jdbc.Driver
+application.xml (display service)
+spring:
+  profiles: default
+  data:
+    mongodb:
+      uri: mongodb://${display.db.url}:27017/display
+      username: ${display.db.name}
+      password: ${display.db.password}
+  jpa:
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+```
 # 운영
 
 ## CI/CD 설정
