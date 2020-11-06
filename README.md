@@ -567,17 +567,17 @@ public interface RentalRepository extends PagingAndSortingRepository<Rental, Lon
 ```
 - 적용 후 REST API 의 테스트
 ```
-# 접수 생성 & 수리 요청
-http POST http://localhost:8088/receipts rentalvehiNo=12허1234 stat=REQUESTRENTAL
-# 수리 완료
-http POST http://localhost:8088/receipts rentalvehiNo=12허1234 stat=REQUESTRENTAL
-# 비용 지불
-http PATCH http://localhost:8088/receipts/1 stat=PAYMENTREQUESTED repairRentalAmt=0
-# 각 어그리게이트 확인 (접수, 수리, 비용지불)
+# 접수 생성 & 렌트 요청
+http POST http://localhost:8088/rentals rentalvehiNo=12허1234 stat=REQUESTRENTAL
+# 렌트 완료
+http POST http://localhost:8088/rentalts rentalvehiNo=12허1234 stat=REQUESTRENTAL
+# 렌트 지불
+http PATCH http://localhost:8088/rentalts/1 stat=PAYMENTREQUESTED repairRentalAmt=0
+# 각 어그리게이트 확인 (접수, 수리, 비용지불,렌트)
 http http://localhost:8088/receipts/1
 http http://localhost:8088/repairs/1
 http http://localhost:8088/payments/1
-http http://localhost:8088/rental/1
+http http://localhost:8088/rentals/1
 ```
 # 운영
 
