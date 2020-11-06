@@ -701,8 +701,7 @@ curl -X PATCH http://localhost:8082/repairs/1  -d '{"vehiNo":"0000", "stat":"REP
 curl -X PATCH http://localhost:8082/repairs/1  -d '{"vehiNo":"0000", "stat":"REPAIRECANCELLED"}' -H 'Content-Type':'application/json' # 성공
 ```
 
-- 또한 과도한 요청시에 서비스 장애가  벌어질 수 있다. (서킷브레이커, 폴백 처리는 운영단계에서 설명한다.)
-
+- 또한 과도한 요청시에 서비스 장애가  벌어질 수 있다. 
 
 
 
