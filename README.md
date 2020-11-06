@@ -660,7 +660,7 @@ Rental 서비스에 부하가 차거나 에러가 발생할 경우 연결 차단
 
 - Destination rule 를 설정: http connection pool 이 1개가 차면 연결을 끊는다. 5xx Error 가 5번 연속적으로 발생 시 해당 서비스로의 연결을 5분 동안 끊는다.
 ```
-# ❯ kubectl -n car get destinationrule place-dr -o yaml
+# ❯ kubectl -n car get destinationrule rental-dr -o yaml
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
