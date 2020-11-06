@@ -641,6 +641,71 @@ spring:
     driverClassName: org.mariadb.jdbc.Driver
 
 ```
+
+
+## 동기식 호출 과 Fallback 처리
+
+분석단계에서의 조건 중 하나로 주문(app)->결제(pay) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다. 
+
+- Rental서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
+```
+# (repair) RentalService.java
+@FeignClient(name="Rental", url="${api.rental.url}")
+public interface RentalService {
+
+    @GetMapping("/rentals/cancel")
+    public void rentalCancel(@RequestParam("repairId") String repairId);
+
+}
+```
+
+```
+# Repair.java
+
+   @PreUpdate
+    public void onPreUpdate(){
+        // 수리 취소
+        if(this.getStat().equals("REPAIRECANCELLED")) {
+            // rental cancel 요청
+            String repairId = this.id.toString();
+            RepairApplication.applicationContext.getBean(automechanicsmall.external.RentalService.class)
+                    .placeCancel(repairId);
+        }
+    }
+
+```
+
+```
+# RentalController.java
+  public void cancel(@RequestParam("repairId") String repairId) {
+   List<Rental> rentalList = rentalRepository.findByRepairId(Long.parseLong(repairId));
+   Rental rental = rentalList.get(0);
+   rental.setState("CANCELED");
+   rentalRepository.save(rental);
+  }
+```
+
+- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 결제 시스템이 장애가 나면 주문도 못받
+
+
+```
+# Rental 서비스를 잠시 내려놓음 
+
+# 수리주문 취소 처리
+curl -X PATCH http://localhost:8082/repairs/1  -d '{"vehiNo":"0000", "stat":"REPAIRECANCELLED"}' -H 'Content-Type':'application/json' # 실패
+# {"timestamp":"2020-11-06T02:23:37.942+0000","status":500,"error":"Internal Server Error","message":"Could not commit JPA transaction; nested exception is javax.persistence.RollbackException: Error while committing the transaction","path":"/repairs/1"}
+
+# rental 서비스 재기동
+
+# 수리주문 취소 처리
+curl -X PATCH http://localhost:8082/repairs/1  -d '{"vehiNo":"0000", "stat":"REPAIRECANCELLED"}' -H 'Content-Type':'application/json' # 성공
+```
+
+- 또한 과도한 요청시에 서비스 장애가  벌어질 수 있다. (서킷브레이커, 폴백 처리는 운영단계에서 설명한다.)
+
+
+
+
 # 운영
 
 ## CI/CD 설정
