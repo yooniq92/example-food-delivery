@@ -491,7 +491,7 @@ Concurrency:		       96.02
     - 구현계획 마이크로 서비스: 수리처에 렌터카 필요하다고 판단될때 렌터카를 제공할 예정
 
 ## 이벤트 스토밍 
-![image](https://user-images.githubusercontent.com/22365716/98314246-ea787980-2018-11eb-9c94-cdeddde09e8c.png)
+![image](https://user-images.githubusercontent.com/33418976/98324387-74cbd800-202f-11eb-95aa-4527fdb646c4.png)
 
 
 ## 헥사고날 아키텍처 변화 
