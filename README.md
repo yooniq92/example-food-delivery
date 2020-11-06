@@ -652,133 +652,22 @@ spring:
 ![image](https://user-images.githubusercontent.com/33418976/98322177-2cf68200-202a-11eb-8462-9f7cef61c8e5.png)
 
 
-## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
-
- 
-- 이를 위하여 공간배치 기록을 남긴 후에 곧바로 결제승인이 되었다는 도메인 이벤트를 카프카로 송출한다(Publish)
- 
-```
-@Entity
-@Table(name="Place")
-public class Place {
-
- ...
-    @PostPersist
-    public void onPostPersist(){
-        if(this.state.equals("COMPLETE")){
-            AssignApproved assignApproved = new AssignApproved();
-            assignApproved.setId(this.id);
-            assignApproved.setPlaceNumber(this.placeNumber);
-            assignApproved.setRepairId(this.repairId);
-            BeanUtils.copyProperties(this, assignApproved);
-            assignApproved.publishAfterCommit();
-        }
-        if(this.state.equals("FAILED")){
-            AssignApproved assignApproved = new AssignApproved();
-            assignApproved.setId(this.id);
-            assignApproved.setPlaceNumber(this.placeNumber);
-            assignApproved.setRepairId(this.repairId);
-            BeanUtils.copyProperties(this, assignApproved);
-            assignApproved.publishAfterCommit();
-        }
-    }
-
-}
-```
-- 상점 서비스에서는 결제승인 이벤트에 대해서 이를 수신하여 자신의 정책을 처리하도록 PolicyHandler 를 구현한다:
-
-```
-package fooddelivery;
-
-...
-
-@Service
-public class PolicyHandler{
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverAssignApproved_RequestRepair(@Payload AssignApproved assignApproved){
-
-        if(assignApproved.isMe()){
-            if(assignApproved.getRepairId()==null){
-                System.out.println("ID is null.");
-                return;
-            }
-            Optional<Repair> entity = repairRepository.findById(assignApproved.getRepairId());
-            if(!entity.isPresent()) { // null
-                System.out.println("There is no such Repair Log");
-            } else{
-                Repair repair = entity.get();
-                if(assignApproved.getPlaceNumber().equals(0) ){ // place assign 실패
-                    System.out.println("PLACE ASSIGNE 실패");
-                    repair.setStat("ASSIGNEFAILED");
-                } else{ // place assing
-                    System.out.println("PLACE ASSIGNE 성공");
-                    repair.setStat("PLACEASSIGNED");
-                }
-                repairRepository.save(repair);
-            }
-        }
-    }
-
-}
-
-```
-실제 구현을 하자면, 카톡 등으로 점주는 노티를 받고, 요리를 마친후, 주문 상태를 UI에 입력할테니, 우선 주문정보를 DB에 받아놓은 후, 이후 처리는 해당 Aggregate 내에서 하면 되겠다.:
-  
-```
-  @Autowired 주문관리Repository 주문관리Repository;
-  
-  @StreamListener(KafkaProcessor.INPUT)
-  public void whenever결제승인됨_주문정보받음(@Payload 결제승인됨 결제승인됨){
-
-      if(결제승인됨.isMe()){
-          카톡전송(" 주문이 왔어요! : " + 결제승인됨.toString(), 주문.getStoreId());
-
-          주문관리 주문 = new 주문관리();
-          주문.setId(결제승인됨.getOrderId());
-          주문관리Repository.save(주문);
-      }
-  }
-
-```
-
-상점 시스템은 주문/결제와 완전히 분리되어있으며, 이벤트 수신에 따라 처리되기 때문에, 상점시스템이 유지보수로 인해 잠시 내려간 상태라도 주문을 받는데 문제가 없다:
-```
-# Place 를 잠시 내려놓음 (ctrl+c)
-
-#주문 접수 
-curl -X PATCH http://localhost:8088/repairs/1  -d '{"vehiNo":"0000", "stat":"PLACEREQUEST"}' -H 'Content-Type':'application/json' # 성공
-
-#주문
-curl -X GET http://localhost:8088/repairs     # 상태 안바뀜 확인
-
-# Place 서비스 기동
-
-#공간배정 상태 확인
-curl -X GET http://localhost:8088/places     # 상태가 "PLACEASSIGNED"으로 확인
-```
-
-
-# 운영
-
-## CI/CD 설정
-
 ## 동기식 호출 / 서킷 브레이킹 / 장애격리
 
 * 서킷 브레이킹 프레임워크의 선택: Istio Destination rule MSA 의 각 서비스들의 에러가 전파되는 것을 막기 위해서 특정 서비스에서 에러가 발생할 경우 해당 서비스로의 연결을 차단하도록 구성하였습니다.
 
-Place 서비스에 부하가 차거나 에러가 발생할 경우 연결 차단
+Rental 서비스에 부하가 차거나 에러가 발생할 경우 연결 차단
 
 - Destination rule 를 설정: http connection pool 이 1개가 차면 연결을 끊는다. 5xx Error 가 5번 연속적으로 발생 시 해당 서비스로의 연결을 5분 동안 끊는다.
 ```
-# ❯ kubectl -n car get destinationrule rental-dr -o yaml
+# ❯ kubectl -n car get destinationrule place-dr -o yaml
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
   name: rental-dr
-  namespace: car
+  namespace: Rental
 spec:
-  host: rental
+  host: Rental
   trafficPolicy:
     connectionPool:
       http:
@@ -791,3 +680,86 @@ spec:
       maxEjectionPercent: 100
 
 ```
+
+* 부하테스터 siege 툴을 통한 서킷 브레이커 동작 확인:
+
+```
+# destinationrule 적용 전
+$ siege -c20 -t2S -v --content-type "application/json" 'http://gateway:8080/rental/1 PATCH {"rentalvehiNo=12허1234","stat":"RECEIPTED","receiptId":"1"}'
+
+** SIEGE 4.0.5
+** Preparing 100 concurrent users for battle.
+The server is now under siege...
+
+HTTP/1.1 200     0.11 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.19 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.18 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.20 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.19 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.20 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.22 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.20 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.21 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.22 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.11 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.11 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+
+Lifting the server siege...
+Transactions:		         163 hits
+Availability:		      100.00 %
+Elapsed time:		        1.62 secs
+Data transferred:	        0.03 MB
+Response time:		        0.19 secs
+Transaction rate:	      100.62 trans/sec
+Throughput:		        0.02 MB/sec
+Concurrency:		       18.98
+Successful transactions:         163
+Failed transactions:	           0
+Longest transaction:	        0.31
+Shortest transaction:	        0.08
+
+# 모두 성공하였다.
+
+# destinationrule 적용
+❯ k -n car get destinationrule
+NAME       HOST    AGE
+rental-dr   place   6s
+
+$ siege -c20 -t2S -v --content-type "application/json" 'http://gateway:8080/rental/1 PATCH {"rentalvehiNo=12허1234","stat":"RECEIPTED","receiptId":"1"}'
+
+HTTP/1.1 200     0.14 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.11 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 503     0.06 secs:      81 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.18 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.17 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.19 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.08 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.11 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.11 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.09 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.11 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.09 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.09 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.09 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.09 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+HTTP/1.1 200     0.12 secs:     217 bytes ==> PATCH http://gateway:8080/rental/1
+
+Lifting the server siege...
+Transactions:		         137 hits
+Availability:		       92.57 %
+Elapsed time:		        1.11 secs
+Data transferred:	        0.03 MB
+Response time:		        0.15 secs
+Transaction rate:	      123.42 trans/sec
+Throughput:		        0.03 MB/sec
+Concurrency:		       18.73
+Successful transactions:         137
+Failed transactions:	          11
+Longest transaction:	        0.35
+Shortest transaction:	        0.03
+
+circuit breaker 가 동작하여 중간에 연결에 차단되 발생된 에러가 생겼다. 
+
+```
+ 
+
